@@ -1,32 +1,33 @@
 {
-  "manifest_version": 2,
-  "name": "Cálculo de horário de saída",
-  "description": "Essa extensão faz algo muito simples que o sistema de ponto não faz.",
-  "version": "1.4",
-  "page_action": {
-    "default_icon": "icon.png"
+  "manifest_version": 3,
+  "name": "Extensão Ponto Web BNB",
+  "description": "Uma extensão simples para aprimorar a funcionalidade do sistema de ponto.",
+  "version": "2.1",
+  "action": {
+    "default_icon": {
+      "48": "icon.png"
+    },
+    "default_title": "Ponto Web - Com cálculo do horário de saída"
   },
   "permissions": [
-    "activeTab",
-    "tabs",
-    "declarativeContent",
-    "storage"
+    "activeTab"
+  ],
+  "host_permissions":[
+    "*://*/pontoweb*"
   ],
   "content_scripts": [
     {
       "matches": [
-        "http://*/pontoweb*"
+        "*://*/pontoweb*"
       ],
       "js": [
         "content.js",
-        "jquery-3.4.1.min.js"
+        "jquery-3.7.0.min.js"
       ]
     }
   ],
   "background": {
-    "scripts": [
-      "bg.js"
-    ],
-    "persistent": false
+    "service_worker": "background.js",
+    "type": "module"
   }
 }

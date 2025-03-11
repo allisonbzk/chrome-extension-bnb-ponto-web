@@ -1,11 +1,5 @@
 var batidas = null;
 
-function formatLeftZero(num) {
-  if (parseInt(num) < 10)
-    return "0" + num;
-  return num;
-}
-
 function getDateTime() {
   let dateTime = null;
   $.ajaxSetup({ async: false });
@@ -23,25 +17,41 @@ function atualizarRelogio() {
 }
 
 function convertMinutesToHour(minutes) {
-  if (minutes == null || minutes == "")
-    return null;
-  let hour = parseInt(minutes / 60);
-  let minute = parseInt(minutes % 60);
-  return formatLeftZero(hour) + ":" + formatLeftZero(minute);
+  if (typeof minutes !== 'number' || minutes < 0) {
+    return "Formato inválido";
+  }
+
+  const hours = Math.floor(minutes / 60).toString().padStart(2, '0');
+  const minutesLeft = (minutes % 60).toString().padStart(2, '0');
+
+  return `${hours}:${minutesLeft}`;
+
 }
 
 function convertDateToMinute(dateTime) {
-  if (dateTime == null || dateTime == "")
-    return null;
+  if (!(dateTime instanceof Date))
+    return "Formato inválido";
 
   return parseInt(dateTime.getHours() * 60) + parseInt(dateTime.getMinutes());
 }
 
 function convertTimeToMinute(time) {
-  if (time == null || time == "")
-    return null;
+  const partes = time.split(':');
 
-  return (parseInt(time.split(":")[0]) * 60) + parseInt(time.split(":")[1]);
+  if (partes.length !== 3) {
+    return "Formato inválido";
+  }
+
+  const horas = parseInt(partes[0], 10);
+  const minutos = parseInt(partes[1], 10);
+
+  if (isNaN(horas) || isNaN(minutos)) {
+    return "Formato inválido";
+  }
+
+  return horas * 60 + minutos;
+
+
 }
 
 class Batidas {
@@ -147,7 +157,7 @@ class Batidas {
     $("#bnb-ponto-web-info-hora-extra, #bnb-ponto-web-info-hora-extra-maxima").remove();
 
     if (this.quantidade >= 3) {
-      let baseComparacao = this.batida4 == null ? convertTimeToMinute(getDateTime()) : this.batida4;
+      let baseComparacao = this.batida4 instanceof Number ? this.batida4 : convertTimeToMinute(getDateTime());
       if (this.saidaEstimada < baseComparacao) {
         $("#bnb-ponto-web-info").append('<span id="bnb-ponto-web-info-hora-extra" class="label">Extra: <strong>' + convertMinutesToHour(baseComparacao - this.saidaEstimada) + '</strong></span>');
         $("#bnb-ponto-web-info").append('<span id="bnb-ponto-web-info-hora-extra-maxima" class="label">Limite de Saída: <strong>' + convertMinutesToHour(this.saidaEstimada + 120 + (this.cargaHoraria == 360 ? 10 : 0)) + '</strong></span>');
@@ -171,10 +181,28 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     batidas = new Batidas();
     setInterval("batidas.atualizarHoraExtra()", 60 * 1000);
 
-    // Adicionando trigger na tabela
-    document.getElementById("batidas").addEventListener('DOMNodeInserted', function (event) {
-      batidas.atualizarBatidas();
-    });
+    // Melhorando a função para a versão 3 do manifesto da extensão do Chrome
+    function adicionarTriggerNaTabela() {
+      const tabelaBatidas = document.getElementById("batidas");
+
+      // Verifica se a tabela de batidas está presente
+      if (tabelaBatidas) {
+        // Utiliza MutationObserver para detectar quando novos elementos forem inseridos na tabela
+        const observer = new MutationObserver(function (mutationsList) {
+          for (const mutation of mutationsList) {
+            if (mutation.type === 'childList') {
+              batidas.atualizarBatidas();
+            }
+          }
+        });
+
+        // Configura o MutationObserver para observar mudanças na tabela
+        observer.observe(tabelaBatidas, { childList: true });
+      }
+    }
+
+    // Chamando a função para adicionar o trigger na tabela
+    adicionarTriggerNaTabela();
 
     $("#new-batida").click(function () { setTimeout("$('#CaptchaCode').focus()", 1000) });
 
