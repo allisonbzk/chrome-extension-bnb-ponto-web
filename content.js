@@ -21,7 +21,7 @@ function convertMinutesToHour(minutes) {
     return "Formato inválido";
   }
 
-  const hours = Math.floor(minutes / 60).toString().padStart(2, '0');
+  const hours = (Math.floor(minutes / 60) % 24).toString().padStart(2, '0');
   const minutesLeft = (minutes % 60).toString().padStart(2, '0');
 
   return `${hours}:${minutesLeft}`;
@@ -54,6 +54,16 @@ function convertTimeToMinute(time) {
 
 }
 
+function isMinutes(value) {
+  if (typeof value === "number") {
+      return Number.isInteger(value);
+  }
+  if (typeof value === "string") {
+      return Number.isInteger(Number(value.trim()));
+  }
+  return false;
+}
+
 class Batidas {
   constructor() {
     this.obterCargaHoraria();
@@ -82,6 +92,15 @@ class Batidas {
       this._batida4 = convertDateToMinute(this.batidas[3]);
     return this._batida4;
   }
+
+  batidaN(n) {
+    return convertDateToMinute(this.batidas[--n]);
+  }
+
+  batidaPar(n) {
+    return (n % 2 == 0);
+  }
+
   get saidaEstimada() {
     return this._saidaEstimada;
   }
@@ -132,8 +151,14 @@ class Batidas {
   obterSaidaEstimada() {
     if (this.quantidade < 3)
       this._saidaEstimada = this.batida1 + this.cargaHoraria - (this.cargaHoraria == 360 ? 0 : -30);
-    else
-      this._saidaEstimada = this.batida1 + this.cargaHoraria + this.batida3 - this.batida2 - (this.cargaHoraria == 360 ? 15 : 0);
+    else {
+      let intervalo = 0;
+      for (let i=3; i <= this.quantidade; i+=2) {
+        intervalo += this.batidaN(i) - this.batidaN(i-1);
+      }
+      this._saidaEstimada = this.batida1 + this.cargaHoraria + intervalo - (this.cargaHoraria == 360 ? 15 : 0);          
+      //this._saidaEstimada = this.batida1 + this.cargaHoraria + this.batida3 - this.batida2 - (this.cargaHoraria == 360 ? 15 : 0);          
+    }      
   }
   mostrarSaidaEstimada() {
     $("#bnb-ponto-web-info-saida-estimada").remove();
@@ -153,11 +178,13 @@ class Batidas {
     if (this.quantidade > 2)
       $("#bnb-ponto-web-info").append('<span id="bnb-ponto-web-info-duracao-intervalo" class="label">Duração do Intervalo: <strong>' + convertMinutesToHour(this.batida3 - this.batida2) + '</strong></span>');
   }
+
   mostrarHoraExtra() {
     $("#bnb-ponto-web-info-hora-extra, #bnb-ponto-web-info-hora-extra-maxima").remove();
 
-    if (this.quantidade >= 3) {
-      let baseComparacao = this.batida4 instanceof Number ? this.batida4 : convertTimeToMinute(getDateTime());
+    if (this.quantidade >= 3) {      
+      let ultimaBatida = this.batidaN(this.quantidade);
+      let baseComparacao = this.batidaPar(this.quantidade) && isMinutes(ultimaBatida) ? ultimaBatida : convertTimeToMinute(getDateTime());
       if (this.saidaEstimada < baseComparacao) {
         $("#bnb-ponto-web-info").append('<span id="bnb-ponto-web-info-hora-extra" class="label">Extra: <strong>' + convertMinutesToHour(baseComparacao - this.saidaEstimada) + '</strong></span>');
         $("#bnb-ponto-web-info").append('<span id="bnb-ponto-web-info-hora-extra-maxima" class="label">Limite de Saída: <strong>' + convertMinutesToHour(this.saidaEstimada + 120 + (this.cargaHoraria == 360 ? 10 : 0)) + '</strong></span>');
